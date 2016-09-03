@@ -1,4 +1,12 @@
 class UsersController < ApplicationController
+  before_action :require_login, only: [:index, :edit, :update, :destroy]
+  before_action :require_correct_user, only: [:edit, :update]
+  before_action :require_admin_user, only: [:destroy]
+
+  def index
+    @users = User.paginate(page: params[:page])
+  end
+
   def show
     @user = User.find(params[:id])
   end
@@ -19,9 +27,47 @@ class UsersController < ApplicationController
     end
   end
 
+  def edit
+  end
+
+  def update
+    if @user.update_attributes(user_params)
+      flash[:success] = "Profile updated"
+      redirect_to user_path(@user)
+    else
+      render 'edit'
+    end
+  end
+
+  def destroy
+    User.find(params[:id]).destroy
+    flash[:success] = "User deleted"
+    redirect_to users_path
+  end
+
   private
 
   def user_params
     params.require(:user).permit(:name, :email, :password, :password_confirmation)
+  end
+
+  def require_login
+    unless logged_in?
+      store_location
+      flash[:danger] = "Please log in."
+      redirect_to login_path
+    end
+  end
+
+  def require_correct_user
+    @user = User.find(params[:id])
+    unless current_user?(@user)
+      flash[:danger] = "You're not allowed to do that."
+      redirect_to root_path
+    end
+  end
+
+  def require_admin_user
+    redirect_to root_path unless current_user.admin?
   end
 end
